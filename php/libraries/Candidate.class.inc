@@ -241,8 +241,8 @@ class Candidate implements \LORIS\StudyEntities\AccessibleResource,
             );
         }
         // dob check
+        $dob_format_error = false;
         if (isset($dateOfBirth)) {
-            $dob_format_error = false;
             $d = DateTime::createFromFormat('Y-m-d', $dateOfBirth);
             if (is_bool($d) && $d === false) {
                 $dob_format_error = true;
@@ -255,7 +255,7 @@ class Candidate implements \LORIS\StudyEntities\AccessibleResource,
                 $dob_format_error = true;
             }
         } else {
-            $dob_format_error = false;
+            $dob_format_error = true;
         }
         if ($dob_format_error) {
             throw new InvalidArgumentException(

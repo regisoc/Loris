@@ -199,6 +199,22 @@ class New_Profile extends \NDB_Form
         $db           = $factory->database();
 
         // Validate DOB fields
+        if (isset($values['dobDate'])) {
+            $dob = \DateTime::createFromFormat('Y-m-d', $values['dobDate']);
+            if (is_bool($dob) && $dob === false) {
+                $errors['dobDate'] = 'Date of Birth is not a valid date.';
+            } elseif (is_object($dob)
+                && ($dob->getLastErrors()['warning_count'] > 0
+                || $dob->getLastErrors()['error_count'] > 0)
+            ) {
+                $errors['dobDate'] = 'Date of Birth is not a valid date.';
+            } elseif ($dob->format('Y') === '0000') {
+                $errors['dobDate'] = 'Date of Birth is not a valid date.';
+            }
+        } else {
+            $errors['dobDate'] = 'Date of Birth is not a valid date.';
+        }
+        // Validate DOB fields
         if (isset($values['dobDate'], $values['dobDateConfirm'])
             && $values['dobDate'] != $values['dobDateConfirm']
         ) {

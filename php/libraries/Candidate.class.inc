@@ -240,12 +240,26 @@ class Candidate implements \LORIS\StudyEntities\AccessibleResource,
                 EDC_NOT_SPECIFIED
             );
         }
-        if ($dateOfBirth !== null
-            && (DateTime::createFromFormat('Y-m-d', $dateOfBirth) === false
-            || empty($dateOfBirth))
-        ) {
+        // dob check
+        if (isset($dateOfBirth)) {
+            $dob_format_error = false;
+            $d = DateTime::createFromFormat('Y-m-d', $dateOfBirth);
+            if (is_bool($d) && $d === false) {
+                $dob_format_error = true;
+            } elseif (is_object($d)
+                && ($d->getLastErrors()['warning_count'] > 0
+                || $d->getLastErrors()['error_count'] > 0)
+            ) {
+                $dob_format_error = true;
+            } elseif ($d->format('Y') === '0000') {
+                $dob_format_error = true;
+            }
+        } else {
+            $dob_format_error = false;
+        }
+        if ($dob_format_error) {
             throw new InvalidArgumentException(
-                "Date of Birth must be specified",
+                "Invalid format for Date of Birth",
                 DOB_NOT_SPECIFIED
             );
         }

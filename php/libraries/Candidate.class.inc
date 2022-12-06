@@ -18,6 +18,7 @@ define('PSCID_NOT_UNIQUE', 3);
 define('PSCID_INVALID_STRUCTURE', 4);
 define('EDC_NOT_SPECIFIED', 5);
 define('DOB_NOT_SPECIFIED', 6);
+define('DOB_INVALID', 7);
 
 /**
  * Wrapper around a candidate in Loris. Mostly, it gets information
@@ -261,8 +262,8 @@ class Candidate implements \LORIS\StudyEntities\AccessibleResource,
         }
         if ($dob_format_error) {
             throw new InvalidArgumentException(
-                "Invalid format for Date of Birth",
-                DOB_NOT_SPECIFIED
+                "Invalid Date of Birth format",
+                DOB_INVALID
             );
         }
 

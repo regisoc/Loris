@@ -202,17 +202,17 @@ class New_Profile extends \NDB_Form
         if (isset($values['dobDate'])) {
             $dob = \DateTime::createFromFormat('Y-m-d', $values['dobDate']);
             if (is_bool($dob) && $dob === false) {
-                $errors['dobDate'] = 'Date of Birth is not a valid date.';
+                $errors['dobDate'] = 'Invalid Date of Birth format.';
             } elseif (is_object($dob)
                 && ($dob->getLastErrors()['warning_count'] > 0
                 || $dob->getLastErrors()['error_count'] > 0)
             ) {
-                $errors['dobDate'] = 'Date of Birth is not a valid date.';
+                $errors['dobDate'] = 'Invalid Date of Birth format.';
             } elseif ($dob->format('Y') === '0000') {
-                $errors['dobDate'] = 'Date of Birth is not a valid date.';
+                $errors['dobDate'] = 'Invalid Date of Birth format.';
             }
         } else {
-            $errors['dobDate'] = 'Date of Birth is not a valid date.';
+            $errors['dobDate'] = 'Date of Birth must be specified.';
         }
         // Validate DOB fields
         if (isset($values['dobDate'], $values['dobDateConfirm'])
@@ -228,7 +228,7 @@ class New_Profile extends \NDB_Form
                 $errors['dobDate'] = 'Date of Birth cannot be set in the future.';
             }
         } catch (\Exception $e) {
-            $errors['dobDate'] = 'Date of Birth is not a valid date.';
+            $errors['dobDate'] = 'Invalid Date of Birth format.';
         }
 
         // Validate EDC fields

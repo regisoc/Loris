@@ -241,20 +241,22 @@ class Candidate implements \LORIS\StudyEntities\AccessibleResource,
             );
         }
         // dob check
+        if (!isset($dateOfBirth)) {
+            throw new InvalidArgumentException(
+                "Date of Birth must be specified",
+                DOB_NOT_SPECIFIED
+            );
+        }
         $dob_format_error = false;
-        if (isset($dateOfBirth)) {
-            $d = DateTime::createFromFormat('Y-m-d', $dateOfBirth);
-            if (is_bool($d) && $d === false) {
-                $dob_format_error = true;
-            } elseif (is_object($d)
-                && ($d->getLastErrors()['warning_count'] > 0
-                || $d->getLastErrors()['error_count'] > 0)
-            ) {
-                $dob_format_error = true;
-            } elseif ($d->format('Y') === '0000') {
-                $dob_format_error = true;
-            }
-        } else {
+        $d = DateTime::createFromFormat('Y-m-d', $dateOfBirth);
+        if (is_bool($d) && $d === false) {
+            $dob_format_error = true;
+        } elseif (is_object($d)
+            && ($d->getLastErrors()['warning_count'] > 0
+            || $d->getLastErrors()['error_count'] > 0)
+        ) {
+            $dob_format_error = true;
+        } elseif ($d->format('Y') === '0000') {
             $dob_format_error = true;
         }
         if ($dob_format_error) {

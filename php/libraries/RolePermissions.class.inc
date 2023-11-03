@@ -1,6 +1,6 @@
 <?php declare(strict_types=1);
 /**
- * The UserPermissions class manages checking of user permissions
+ * The RolePermissions class manages checking of role permissions
  *
  * PHP Version 7
  *
@@ -12,7 +12,7 @@
  */
 
 /**
- * Manages user permissions
+ * Manages role permissions
  *
  * @category Main
  * @package  Main
@@ -20,14 +20,14 @@
  * @license  http://www.gnu.org/licenses/gpl-3.0.txt GPLv3
  * @link     https://www.github.com/aces/Loris/
  */
-class UserPermissions
+class RolePermissions
 {
     /**
-     * User's ID
+     * Role's ID
      *
      * @var ?string
      */
-    var $userID;
+    var $roleID;
 
     /**
      * Stores the permissions
@@ -39,25 +39,27 @@ class UserPermissions
     /**
      * Constructor
      *
-     * Fills the permissions property based on username
+     * Fills the permissions property based on role code
      *
-     * @param string|null $username Identifies the user
+     * @param string|null $roleCode Identifies the role
      *
-     * @return bool true if the user exists, false otherwise
+     * @return bool true if the role exists, false otherwise
      */
-    function select(?string $username): bool
+    function select(?string $roleCode): bool
     {
-        // get the proper ID from the database
-        $query  = "SELECT ID FROM users WHERE UserID =:UName";
-        $params = ['UName' => $username];
-
-        $userID = \NDB_Factory::singleton()->database()->pselectOne($query, $params);
-        if ($userID === null) {
+        $db = \NDB_Factory::singleton()->database();
+        
+        // get the role ID from the database
+        $roleID = $db->pselectOne(
+            "SELECT RoleID FROM roles WHERE RoleID =:rid",
+            ['rid' => $roleCode]
+        );
+        if ($roleID === null) {
             return false;
         }
-        $this->userID = $userID;
+        $this->roleID = $roleID;
 
-        // load the user's permissions
+        // load the role's permissions
         $this->setPermissions();
 
         return true;
@@ -65,44 +67,45 @@ class UserPermissions
 
 
     /**
-     * Loads the users's permissions
+     * Loads the role's permissions
      *
      * @return void
      * @access private
      */
     function setPermissions(): void
     {
-        // create DB object
-        $DB = \NDB_Factory::singleton()->database();
+        $db = \NDB_Factory::singleton()->database();
 
         // get all the permissions for this user
-        $query = "SELECT p.code, pr.userID FROM permissions p
-            LEFT JOIN user_perm_rel pr
-            ON (p.permID=pr.permID AND pr.userID=:UID)";
-
-        $results = $DB->pselect($query, ['UID' => $this->userID]);
+        $results = $db->pselect(
+            "SELECT p.code, rpr.RoleID
+            FROM permissions p
+                LEFT JOIN role_permission_rel rpr ON (p.permID = rpr.permID)
+            WHERE rpr.roleID = :rid",
+            ['rid' => $this->roleID]
+        );
 
         // reset the array
         $this->permissions = [];
 
-        // Fill the permissions array of this UserPermissions object with the
-        // values extracted for this user from the database.
+        // Fill the permissions array of this RolePermissions object with the
+        // values extracted for this role from the database.
         if (is_array($results) and !empty($results)) {
             foreach ($results as $row) {
-                $userMatch = $row['userID'] === $this->userID;
-                $this->permissions[$row['code']] = $userMatch;
+                $roleMatch = $row['RoleID'] === $this->roleID;
+                $this->permissions[$row['code']] = $roleMatch;
             }
         }
     }
 
 
     /**
-     * Determines if the user has the permission to access a specific module
+     * Determines if the role has the permission to access a specific module
      * or page.
      *
      * @param string $code The permission code
      *
-     * @return bool If the user has a permission.
+     * @return bool If the role has a permission.
      */
     public function hasPermission(string $code): bool
     {
@@ -111,7 +114,7 @@ class UserPermissions
     }
 
     /**
-     * Check if a given permission code is present in a user's list of
+     * Check if a given permission code is present in a role's list of
      * permissions. Also validates that the permission code is real.
      *
      * @param string $code Permission code to test.
@@ -121,18 +124,18 @@ class UserPermissions
     private function _permissionTrueAndValid(string $code): bool
     {
         if (!isset($this->permissions[$code])) {
-            throw new ConfigurationException("Invalid permission code $code");
+            throw new ConfigurationException("Invalid permission code '$code'");
         }
         return intval($this->permissions[$code]) === 1;
     }
 
     /**
-     * Used to test whether a user has ALL of an array of specified permissions.
-     * Returns false on the first permission that the user doesn't have.
+     * Used to test whether a role has ALL of an array of specified permissions.
+     * Returns false on the first permission that the role doesn't have.
      *
      * @param string[] $permissions Array of permissions codes.
      *
-     * @return bool Whether the user has all the permissions in $permissions.
+     * @return bool Whether the role has all the permissions in $permissions.
      */
     public function hasAllPermissions(array $permissions): bool
     {
@@ -150,11 +153,11 @@ class UserPermissions
     }
 
     /**
-     * Used to test whether a user has ANY of an array of specified permissions.
+     * Used to test whether a role has ANY of an array of specified permissions.
      *
      * @param string[] $permissions Array of permissions codes.
      *
-     * @return bool Whether the user has any of the permissions in $permissions.
+     * @return bool Whether the role has any of the permissions in $permissions.
      */
     public function hasAnyPermission(array $permissions): bool
     {
@@ -184,7 +187,7 @@ class UserPermissions
 
 
     /**
-     * Add permissions to a user
+     * Add permissions to a role
      *
      * @param array $set Array of permission IDs to add
      *
@@ -193,27 +196,26 @@ class UserPermissions
      */
     function addPermissions(array $set): void
     {
-        // create DB object
-        $DB = \NDB_Factory::singleton()->database();
+        $db = \NDB_Factory::singleton()->database();
 
         // add the permissions
         foreach ($set as $value) {
-            $DB->insert(
-                'user_perm_rel',
+            $db->insert(
+                'role_permission_rel',
                 [
-                    'userID' => $this->userID,
+                    'RoleID' => $this->roleID,
                     'permID' => $value,
                 ]
             );
         }
 
-        // refresh the user permissions
+        // refresh the role permissions
         $this->setPermissions();
     }
 
 
     /**
-     * Removes permissions from a user
+     * Removes permissions from a role
      *
      * @param array|null $set Array of permission IDs to remove
      *
@@ -222,21 +224,21 @@ class UserPermissions
      */
     function removePermissions(?array $set = null): void
     {
-        // create DB object
-        $DB = \NDB_Factory::singleton()->database();
+        $db = \NDB_Factory::singleton()->database();
+
+        // remove all permissions
         if (is_null($set)) {
-            // remove all permissions
-            $DB->delete(
-                'user_perm_rel',
-                ['userID' => $this->userID]
+            $db->delete(
+                'role_permission_rel',
+                ['RoleID' => $this->roleID]
             );
         } else {
             // remove the permissions
             foreach ($set as $value) {
-                $DB->delete(
-                    'user_perm_rel',
+                $db->delete(
+                    'role_permission_rel',
                     [
-                        'userID' => $this->userID,
+                        'RoleID' => $this->roleID,
                         'permID' => $value,
                     ]
                 );
@@ -249,22 +251,22 @@ class UserPermissions
 
 
     /**
-     * Returns an array of the user's permission IDs
+     * Returns an array of the role's permission IDs
      *
      * @return array
      * @access public
      */
     function getPermissionIDs(): array
     {
-        // create DB object
-        $DB = \NDB_Factory::singleton()->database();
+        $db = \NDB_Factory::singleton()->database();
 
         // get all the permissions for this user
-        $query = "SELECT permissions.permID
-            FROM permissions, user_perm_rel
-            WHERE permissions.permID = user_perm_rel.permID AND userID = :UID";
-
-        $results = $DB->pselect($query, ['UID' => $this->userID]);
+        $results = $db->pselect(
+            "SELECT DISTINCT rpr.permID
+            FROM role_permission_rel rpr
+            WHERE RoleID = :rid",
+            ['rid' => $this->roleID]
+        );
 
         // isolate and return numeric permission values
         $permIDs = [];
@@ -278,7 +280,7 @@ class UserPermissions
 
 
     /**
-     * Returns an array with all permissions information for the user
+     * Returns an array with all permissions information for the role
      *
      * @param \LORIS\LorisInstance $loris The LORIS instance to get
      *                                    permissions from.
@@ -287,39 +289,28 @@ class UserPermissions
      */
     function getPermissionsVerbose(\LORIS\LorisInstance $loris): array
     {
-        // create DB object
-        $DB = $loris->getDatabaseConnection();
+        $db = $loris->getDatabaseConnection();
 
+        // get verbose 
         $query = "SELECT
                 p.permID,
                 p.code,
                 p.description,
-                GROUP_CONCAT(pt.Description) as action,
-                p.moduleID
-            FROM permissions p ";
-
-        //If not superuser, get the permissions that the user has
-        if (!$this->hasPermission('superuser')) {
-            $query  .= "JOIN user_perm_rel up ON (p.permID=up.PermID)
-                    LEFT JOIN modules m ON (p.moduleID=m.ID)
-                    LEFT JOIN permission_permission_type_rel pptr ON (pptr.permID = p.permID)
-                    LEFT JOIN permission_type pt ON (pt.PermissionTypeID = pptr.PermissionTypeID)
-                WHERE up.userID = :UID and m.Active='Y'
-                GROUP BY p.permID, p.code, p.description, p.moduleID
-                ORDER BY m.Name, p.description";
-            $results = $DB->pselect($query, ['UID' => $this->userID]);
-        } else {
-            $query  .= "LEFT JOIN modules m ON (p.moduleID=m.ID)
+                p.moduleID,
+                GROUP_CONCAT(pt.Description) as action
+            FROM permissions p 
+                JOIN role_permission_rel rpr ON (p.permID=rpr.permID)
+                LEFT JOIN modules m ON (p.moduleID=m.ID)
                 LEFT JOIN permission_permission_type_rel pptr ON (pptr.permID = p.permID)
                 LEFT JOIN permission_type pt ON (pt.PermissionTypeID = pptr.PermissionTypeID)
-                WHERE m.Active='Y'
-                GROUP BY p.permID, p.code, p.description, p.moduleID
-                ORDER BY m.Name, p.description";
-            $results = $DB->pselect($query, []);
-        }
-        $modules = \Module::getActiveModulesIndexed($loris);
+            WHERE rpr.RoleID = :rid and m.Active='Y'
+            GROUP BY p.permID, p.code, p.description, p.moduleID
+            ORDER BY m.Name, p.description";
+        $results = $db->pselect($query, []);
+        
         // Build new meaningful description from combination of columns
         // Module Long Name: action description
+        $modules = \Module::getActiveModulesIndexed($loris);
         foreach ($results as $key=>$perm) {
             $newDesc = '';
             if (!empty($perm['moduleID'])) {
@@ -331,32 +322,6 @@ class UserPermissions
             $results[$key]['label'] = $newDesc;
         }
         return $results;
-    }
-
-    /**
-     * Inserts the user modifications into the user_account_history
-     *
-     * @param Integer|null $PermID     The ID of the permission
-     * @param String|null  $permAction The Type of user-modification ('D' or 'I')
-     *
-     * @return void
-     */
-    function insertIntoUserAccountHistory(
-        ?int $PermID = null,
-        ?string $permAction = null
-    ): void {
-
-        $DB = \NDB_Factory::singleton()->database();
-
-        //insert into the login_history
-        $DB->insert(
-            'user_account_history',
-            [
-                'userID'     => $this->userID,
-                'PermID'     => $PermID,
-                'PermAction' => $permAction,
-            ]
-        );
     }
 }
 

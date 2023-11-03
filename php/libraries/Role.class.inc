@@ -20,7 +20,8 @@
  * @license  http://www.gnu.org/licenses/gpl-3.0.txt GPLv3
  * @link     https://www.github.com/aces/Loris/
  */
-class Role implements \LORIS\StudyEntities\AccessibleResource
+class Role extends RolePermissions implements
+    \LORIS\StudyEntities\AccessibleResource
 {
     /**
      * Stores role information
@@ -46,13 +47,13 @@ class Role implements \LORIS\StudyEntities\AccessibleResource
 
         // get user data from database
         $row = $DB->pselectRow(
-            "SELECT * FROM roles WHERE Code = :co",
+            "SELECT * FROM role WHERE Code = :co",
             ['co' => $roleCode]
         );
 
         // if null, consider it as the "blocked" role.
         if (is_null($row)) {
-            return self::_getBlockedRole();
+            $row = self::_getBlockedRole();
         }
 
         // New role obj
@@ -66,26 +67,22 @@ class Role implements \LORIS\StudyEntities\AccessibleResource
     }
 
     /**
-     * Create/get the blocked role archetype from DB.
+     * Get the blocked role archetype from DB.
      *
-     * @return Role
+     * @return ?array
      * @access private
      * @static
      */
-    private static function _getBlockedRole(): \Role
+    private static function _getBlockedRole(): ?array
     {
-        $DB = \NDB_Factory::singleton()->database();
-        $blocked = new \Role;
-        $row = $DB->pselectRow(
-            "SELECT * FROM roles WHERE Code = 'blocked'",
+        return \NDB_Factory::singleton()->database()->pselectRow(
+            "SELECT * FROM role WHERE Code = 'blocked'",
             []
         );
-        $blocked->roleInfo = $row;
-        return $blocked;
     }
 
     /**
-     * Inserts data into the `roles` table.
+     * Inserts data into the `role` table.
      *
      * @param array $set The array formatted for use in a Database call
      *
@@ -95,7 +92,7 @@ class Role implements \LORIS\StudyEntities\AccessibleResource
      */
     public static function insert(array $set): void
     {
-        \NDB_Factory::singleton()->database()->insert('roles', $set);
+        \NDB_Factory::singleton()->database()->insert('role', $set);
     }
 
 
@@ -110,7 +107,7 @@ class Role implements \LORIS\StudyEntities\AccessibleResource
     public function update(array $set): void
     {
         \NDB_Factory::singleton()->database()->update(
-            'roles',
+            'role',
             $set,
             ['RoleID' => $this->roleInfo['RoleID']]
         );
@@ -174,8 +171,8 @@ class Role implements \LORIS\StudyEntities\AccessibleResource
     }
 
     /**
-     * Return true if the entity is accessible by the
-     * user.
+     * Implements the AccessibleResource interface. Return true if the role is
+     * accessible by the user.
      *
      * @param \User $user The user whose access should be
      *                    validated
@@ -187,5 +184,37 @@ class Role implements \LORIS\StudyEntities\AccessibleResource
         return $user->hasPermission('role_view')
                 || $user->hasPermission('role_edit')
                 || $user->hasPermission('role_assign');
+    }
+
+    /**
+     * Checks if the string is a role within the database
+     *
+     * @param string $roleCode the role code to be checked
+     *
+     * @return boolean
+     */
+    public static function exists($roleCode)
+    {
+        $roleFound = \NDB_Factory::singleton()->database()->pselectOne(
+            "SELECT RoleID FROM role WHERE Code = :rcode",
+            ['rcode' => $roleCode]
+        );
+        return !is_null($roleFound);
+    }
+
+    /**
+     * Useful during new Role creation or for code comparison.
+     * Generate the corresponding role code from a given role name. 
+     * 
+     * @param string $name a role name
+     * 
+     * @return string a code version of the name
+     */
+    public static function generateCodeFromName(string $name)
+    {
+        $code = strtolower(trim($name));
+        $code = str_replace("  ", " ", $code);
+        $code = str_replace(" ", "_", $code);
+        return $code;
     }
 }

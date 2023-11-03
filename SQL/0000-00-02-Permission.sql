@@ -12,25 +12,6 @@ CREATE TABLE `permissions` (
     ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
-
-CREATE TABLE `user_perm_rel` (
-  `userID` int(10) unsigned NOT NULL default '0',
-  `permID` int(10) unsigned NOT NULL default '0',
-  PRIMARY KEY  (`userID`,`permID`),
-  KEY `FK_user_perm_rel_2` (`permID`),
-  CONSTRAINT `FK_user_perm_rel_2`
-  FOREIGN KEY (`permID`)
-    REFERENCES `permissions` (`permID`)
-    ON DELETE CASCADE
-    ON UPDATE CASCADE,
-  CONSTRAINT `FK_user_perm_rel_1`
-  FOREIGN KEY (`userID`)
-    REFERENCES `users` (`ID`)
-    ON DELETE CASCADE
-    ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-
-
 INSERT INTO `permissions` VALUES
     (1,'superuser','Superuser - supersedes all permissions',NULL),
     (2,'user_accounts','User Accounts - Own Sites',(SELECT ID FROM modules WHERE Name='user_accounts')),
@@ -99,23 +80,16 @@ INSERT INTO `permissions` VALUES
     (65,'roles_assign','Roles',(SELECT ID FROM modules WHERE Name='roles')),
     (66,'roles_edit','Roles',(SELECT ID FROM modules WHERE Name='roles'));
 
--- admin perm = all
-INSERT INTO `user_perm_rel` (userID, permID)
-  SELECT u.ID, p.permID
-  FROM users u JOIN permissions p
-  WHERE u.userid = 'admin'
-  ORDER BY p.permID;
-
 -- permission type (old 'action')
-CREATE TABLE `permissions_types` (
+CREATE TABLE `permission_type` (
   `PermissionTypeID` int(10) unsigned NOT NULL AUTO_INCREMENT,
   `Description` varchar(100) NOT NULL DEFAULT '',
   PRIMARY KEY (`PermissionTypeID`),
   UNIQUE KEY `Description` (`Description`)
 ) ENGINE=InnoDB DEFAULT CHARSET='utf8';
 
--- add to permissions_types
-INSERT INTO `permissions_types` (`PermissionTypeID`, `Description`) 
+-- add to permission_type
+INSERT INTO `permission_type` (`PermissionTypeID`, `Description`) 
 VALUES
   (1,'View'),
   (2,'Create'),
@@ -125,27 +99,27 @@ VALUES
   (6,'Download'),
   (7,'All');
 
--- permissions_types/permissions relation.
-DROP TABLE IF EXISTS `permissions_permissions_types_rel`;
-CREATE TABLE `permissions_permissions_types_rel` (
+-- permission_type/permissions relation.
+DROP TABLE IF EXISTS `permission_permission_type_rel`;
+CREATE TABLE `permission_permission_type_rel` (
   `PermissionTypeID` int(10) unsigned NOT NULL default '0',
   `permID` int(10) unsigned NOT NULL default '0',
   PRIMARY KEY  (`PermissionTypeID`,`permID`),
-  KEY `FK_permissions_permissions_types_rel_2` (`permID`),
-  CONSTRAINT `FK_permissions_permissions_types_rel_2`
+  KEY `FK_permission_permission_type_rel_2` (`permID`),
+  CONSTRAINT `FK_permission_permission_type_rel_2`
   FOREIGN KEY (`permID`)
     REFERENCES `permissions` (`permID`)
     ON DELETE CASCADE
     ON UPDATE CASCADE,
-  CONSTRAINT `FK_permissions_permissions_types_rel_1`
+  CONSTRAINT `FK_permission_permission_type_rel_1`
   FOREIGN KEY (`PermissionTypeID`)
-    REFERENCES `permissions_types` (`PermissionTypeID`)
+    REFERENCES `permission_type` (`PermissionTypeID`)
     ON DELETE CASCADE
     ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET='utf8';
 
 -- other permissions
-INSERT INTO `permissions_permissions_types_rel` (permID, PermissionTypeID)
+INSERT INTO `permission_permission_type_rel` (permID, PermissionTypeID)
 VALUES 
   (2, 1), (2, 2), (2, 3),
   (3, 1), (3, 2), (3, 3),
@@ -213,9 +187,34 @@ VALUES
   (65, 3),
   (66, 2), (66, 3), (66, 4);
 
--- roles
-DROP TABLE IF EXISTS `roles`;
-CREATE TABLE `roles` (
+--
+CREATE TABLE `user_perm_rel` (
+  `userID` int(10) unsigned NOT NULL default '0',
+  `permID` int(10) unsigned NOT NULL default '0',
+  PRIMARY KEY  (`userID`,`permID`),
+  KEY `FK_user_perm_rel_2` (`permID`),
+  CONSTRAINT `FK_user_perm_rel_2`
+  FOREIGN KEY (`permID`)
+    REFERENCES `permissions` (`permID`)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE,
+  CONSTRAINT `FK_user_perm_rel_1`
+  FOREIGN KEY (`userID`)
+    REFERENCES `users` (`ID`)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+-- admin perm = all
+INSERT INTO `user_perm_rel` (userID, permID)
+  SELECT u.ID, p.permID
+  FROM users u JOIN permissions p
+  WHERE u.userid = 'admin'
+  ORDER BY p.permID;
+
+-- role
+DROP TABLE IF EXISTS `role`;
+CREATE TABLE `role` (
   `RoleID` int(10) unsigned NOT NULL AUTO_INCREMENT,
   `Code` varchar(255) NOT NULL DEFAULT '',
   `Name` varchar(255) NOT NULL DEFAULT '',
@@ -224,7 +223,7 @@ CREATE TABLE `roles` (
   UNIQUE KEY `Code` (`Code`)
 ) ENGINE=InnoDB DEFAULT CHARSET='utf8';
 
-INSERT INTO `roles` VALUES
+INSERT INTO `role` VALUES
   (1,'blocked', 'Blocked', 'A blocked user: user has access to nothing.'),
   (2,'administrator', 'Administrator', 'An administrator: has access to everything, no restrictions.');
 

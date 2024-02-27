@@ -41,7 +41,6 @@ class New_Profile extends \NDB_Form
         $config    = $factory->config();
         $user      = $factory->user();
         $startYear = $config->getSetting('startYear');
-        $endYear   = $config->getSetting('endYear');
         $ageMax    = $config->getSetting('ageMax');
         $ageMin    = $config->getSetting('ageMin');
         $dobFormat = $config->getSetting('dobFormat');
@@ -50,7 +49,7 @@ class New_Profile extends \NDB_Form
 
         $pscidSet = "false";
         $minYear  = (isset($startYear, $ageMax)) ? $startYear - $ageMax : null;
-        $maxYear  = (isset($endYear, $ageMin)) ? $endYear - $ageMin : null;
+        $maxYear  = (isset($startYear, $ageMin)) ? $startYear - $ageMin : null;
 
         // Get sites for the select dropdown
         $user_list_of_sites = $user->getCenterIDs();
